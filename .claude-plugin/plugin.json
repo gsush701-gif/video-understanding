@@ -1,6 +1,6 @@
 {
   "name": "video-understanding",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Lets Claude watch videos: fast local Whisper transcription, scene-change keyframes and contact sheets, YouTube transcripts, ~100 languages.",
   "author": {
     "name": "Sushil Gautam"

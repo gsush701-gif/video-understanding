@@ -522,7 +522,14 @@ def run_budgeted(src, out, meta, want_tx, want_fr, args, t0, workdir):
     """Resumable mode for shells that kill long commands: work for --budget seconds,
     save progress in <out>/.progress.json, print status "partial", and continue from
     there when the exact same command is run again."""
-    state_p, cache = out / ".progress.json", out / ".audio.wav"
+    # Progress lives in the temp dir, not the output folder: some sandboxes (e.g. the
+    # Claude desktop app's connected folders) forbid deleting files there, and the
+    # audio cache can be large. Keyed by output folder so reruns find it.
+    import hashlib
+    key = hashlib.sha1(str(out.resolve()).encode()).hexdigest()[:16]
+    pdir = Path(os.environ.get("VIDEO_PROGRESS_DIR") or tempfile.gettempdir()) / "video-understanding" / key
+    pdir.mkdir(parents=True, exist_ok=True)
+    state_p, cache = pdir / "progress.json", pdir / "audio.wav"
     st = json.loads(state_p.read_text()) if state_p.exists() else {}
     if st.get("source") not in (None, str(src)):
         st = {}
@@ -538,7 +545,7 @@ def run_budgeted(src, out, meta, want_tx, want_fr, args, t0, workdir):
             fut_fr = ex.submit(extract_frames, src, meta, out, args)
         if want_tx and not st.get("tx_done"):
             if not cache.exists():
-                extract_audio(src, out, args, name=".audio.wav")
+                extract_audio(src, pdir, args, name="audio.wav")
             done = st.get("done_until", v_start)
             rest = Path(workdir) / "rest.wav"
             run(["ffmpeg", "-y", "-v", "error", "-ss", f"{done - v_start:.3f}", "-i", str(cache), str(rest)])
@@ -573,8 +580,7 @@ def run_budgeted(src, out, meta, want_tx, want_fr, args, t0, workdir):
         transcript = {"backend": st["backend"], "language": st["language"],
                       "segments": st["segments"], "complete": True}
         write_transcript(transcript, out)
-    cache.unlink(missing_ok=True)
-    state_p.unlink(missing_ok=True)
+    shutil.rmtree(pdir, ignore_errors=True)
     finish(out, meta, transcript, frames, sheets, t0, workdir)
 
 

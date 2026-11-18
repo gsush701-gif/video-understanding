@@ -106,9 +106,23 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(len(starts), len(set(starts)))  # no duplicated segments
         self.assertGreaterEqual(len(lines), 5)
         self.assertTrue(starts == sorted(starts))
-        self.assertFalse((out / ".progress.json").exists())
-        self.assertFalse((out / ".audio.wav").exists())
+        # nothing temporary is ever written into the output folder
+        self.assertEqual(sorted(p.name for p in out.iterdir() if p.name.startswith(".")), [])
         self.assertTrue((out / "index.md").exists() and summary["sheets"])
+
+    def test_budget_mode_never_deletes_in_output_folder(self):
+        # Claude desktop app connected folders forbid deletes; budget mode must still finish
+        out = self.tmp / "nodelete"
+        env_flag = {"VIDEO_PROGRESS_DIR": str(self.tmp / "progress")}
+        for _ in range(20):
+            p = subprocess.run([sys.executable, str(SCRIPT), str(self.clip), "--budget", "0.001", "--out", str(out)],
+                               capture_output=True, text=True,
+                               env={**os.environ, "PYTHONPATH": str(FAKE), **env_flag})
+            self.assertEqual(p.returncode, 0, p.stderr)
+            if json.loads(p.stdout)["status"] == "done":
+                break
+        self.assertTrue((out / "index.md").exists())
+        self.assertFalse(any(p.name.startswith(".") for p in out.iterdir()))
 
     def test_prompt_echo_is_dropped(self):
         out = self.tmp / "prompt"
