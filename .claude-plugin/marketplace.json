@@ -1,0 +1,14 @@
+{
+  "name": "video-understanding",
+  "description": "Video understanding for Claude: transcription, keyframes and YouTube transcripts.",
+  "owner": {
+    "name": "Sushil Gautam"
+  },
+  "plugins": [
+    {
+      "name": "video-understanding",
+      "source": "./",
+      "description": "Lets Claude watch videos: fast local Whisper transcription, scene-change keyframes and contact sheets, YouTube transcripts, ~100 languages."
+    }
+  ]
+}

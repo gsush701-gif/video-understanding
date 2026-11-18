@@ -1,0 +1,27 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: System packages
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg espeak-ng
+      - name: Python packages
+        run: pip install faster-whisper pillow
+      - name: Tests (incl. real speech with the tiny model)
+        env:
+          RUN_REAL: "1"
+        run: python -m unittest discover -s tests -v
+      - name: Setup script runs
+        run: python skills/video-understanding/scripts/setup.py --model tiny --models-dir /tmp/models

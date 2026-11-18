@@ -1,0 +1,20 @@
+{
+  "name": "video-understanding",
+  "version": "0.1.0",
+  "description": "Lets Claude watch videos: fast local Whisper transcription, scene-change keyframes and contact sheets, YouTube transcripts, ~100 languages.",
+  "author": {
+    "name": "Sushil Gautam"
+  },
+  "keywords": [
+    "video",
+    "transcription",
+    "whisper",
+    "youtube",
+    "subtitles",
+    "keyframes",
+    "multilingual"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/gsush701-gif/video-understanding",
+  "repository": "https://github.com/gsush701-gif/video-understanding"
+}
