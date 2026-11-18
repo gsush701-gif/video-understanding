@@ -3,6 +3,7 @@ Records the options it was called with in LAST_KW for assertions."""
 from types import SimpleNamespace as N
 
 LAST_KW = {}
+LAST_INPUT = []
 
 
 class WhisperModel:
@@ -12,12 +13,16 @@ class WhisperModel:
     def transcribe(self, path, **kw):
         LAST_KW.clear()
         LAST_KW.update(kw)
-        import wave
-        try:
-            with wave.open(str(path)) as w:
-                dur = w.getnframes() / w.getframerate()
-        except Exception:
-            dur = 24.0
+        LAST_INPUT[:] = [path]
+        if hasattr(path, "shape"):          # samples at 16 kHz, as analyze_video passes them
+            dur = len(path) / 16000
+        else:
+            import wave
+            try:
+                with wave.open(str(path)) as w:
+                    dur = w.getnframes() / w.getframerate()
+            except Exception:
+                dur = 24.0
         # one 3.5 s "spoken" line every 4 s of audio, like a real model would emit
         segs = [N(start=i * 4.0, end=i * 4.0 + 3.5, text=f" Line {i} spoken here.", words=None)
                 for i in range(int(dur // 4))]

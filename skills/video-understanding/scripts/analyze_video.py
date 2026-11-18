@@ -150,12 +150,26 @@ def local_model(name):
     return best if name is None else None
 
 
+def load_wav(path):
+    """Read the 16 kHz mono PCM WAV that extract_audio() wrote into a float32 array.
+    Passing samples (not a path) bypasses faster-whisper's PyAV decoding, which breaks
+    whenever PyAV changes its API (e.g. av>=16 removed open(metadata_errors=...))."""
+    import wave
+    import numpy as np
+    with wave.open(str(path), "rb") as w:
+        if w.getsampwidth() != 2 or w.getnchannels() != 1:
+            return str(path)  # not our format; let the backend decode it
+        frames = w.readframes(w.getnframes())
+    return np.frombuffer(frames, dtype=np.int16).astype(np.float32) / 32768.0
+
+
 def transcribe(audio, args, offset=None, deadline=None):
     """offset: seconds added to every timestamp (where this audio starts in the video).
     deadline: time.time() after which to stop at the next segment boundary (complete=False)."""
     backend = pick_backend(args.backend)
     t0 = time.time()
     segments, info_lang, complete = [], args.language, True
+    samples = load_wav(audio) if str(audio).endswith(".wav") else str(audio)
 
     if backend == "faster":
         from faster_whisper import WhisperModel, BatchedInferencePipeline
@@ -186,11 +200,11 @@ def transcribe(audio, args, offset=None, deadline=None):
         if args.fast and not args.prompt:
             try:
                 pipe = BatchedInferencePipeline(model=model)
-                segs, info = pipe.transcribe(str(audio), batch_size=16 if cuda else 8, **kw)
+                segs, info = pipe.transcribe(samples, batch_size=16 if cuda else 8, **kw)
             except Exception:
                 segs = None
         if segs is None:
-            segs, info = model.transcribe(str(audio), **kw)
+            segs, info = model.transcribe(samples, **kw)
         info_lang = info.language
         for s in segs:
             seg = {"start": s.start, "end": s.end, "text": s.text.strip()}
@@ -206,7 +220,7 @@ def transcribe(audio, args, offset=None, deadline=None):
         model_name = args.model or "large-v3-turbo"
         repo = model_name if "/" in model_name else f"mlx-community/whisper-{model_name}"
         log(f"transcribing with mlx-whisper/{repo}")
-        r = mlx_whisper.transcribe(str(audio), path_or_hf_repo=repo,
+        r = mlx_whisper.transcribe(samples, path_or_hf_repo=repo,
                                    language=args.language, word_timestamps=args.words,
                                    task="translate" if args.translate else "transcribe")
         info_lang = r.get("language")
@@ -221,7 +235,7 @@ def transcribe(audio, args, offset=None, deadline=None):
         model_name = args.model or "base"
         log(f"transcribing with openai-whisper/{model_name} (slow fallback)")
         m = whisper.load_model(model_name)
-        r = m.transcribe(str(audio), language=args.language, word_timestamps=args.words,
+        r = m.transcribe(samples, language=args.language, word_timestamps=args.words,
                          task="translate" if args.translate else "transcribe")
         info_lang = r.get("language")
         for s in r["segments"]:

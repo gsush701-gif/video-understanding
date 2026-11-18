@@ -121,7 +121,8 @@ class PipelineTests(unittest.TestCase):
         sys.path.insert(0, str(FAKE))
         import faster_whisper  # the fake
         wav = self.tmp / "a.wav"
-        subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i", "sine=d=2", str(wav)], check=True)
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i", "sine=d=2",
+                        "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", str(wav)], check=True)
         ns = av.argparse.Namespace(backend="faster", model="tiny", language=None, fast=False, words=False,
                                    translate=True, mixed=True, prompt=None, start=None)
         av.transcribe(wav, ns)
@@ -129,6 +130,11 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(kw["task"], "translate")
         self.assertTrue(kw["multilingual"])
         self.assertNotIn("_batched", kw)  # complete (sequential) mode by default
+        # regression: Whisper must get decoded samples, never a path (PyAV API breaks)
+        audio_in = faster_whisper.LAST_INPUT[0]
+        self.assertTrue(hasattr(audio_in, "dtype"), type(audio_in))
+        self.assertEqual(str(audio_in.dtype), "float32")
+        self.assertAlmostEqual(len(audio_in) / 16000, 2.0, delta=0.1)
 
 
 class HelperTests(unittest.TestCase):
