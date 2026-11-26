@@ -9,6 +9,11 @@
       "name": "video-understanding",
       "source": "./",
       "description": "Lets Claude watch videos: fast local Whisper transcription, scene-change keyframes and contact sheets, YouTube transcripts, ~100 languages."
+    },
+    {
+      "name": "vector-video",
+      "source": { "source": "github", "repo": "gsush701-gif/vector-video" },
+      "description": "Turn a scene script into a narrated .mp4 where every frame is vector graphics drawn by code, with offline text-to-speech."
     }
   ]
 }
